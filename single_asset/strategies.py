@@ -3,71 +3,81 @@ import pandas as pd
 
 def compute_buy_and_hold_curve(
     df: pd.DataFrame,
-    initial_capital: float = 1.0
+    initial_capital: float = 100000.0,   # capital USD
+    buy_fee: float = 0.001,            # 0.1% fees
+    daily_fee: float = 0.0001          # 0.01% fees per day
 ) -> pd.DataFrame:
     """
-    Stratégie Buy & Hold :
-    - On achète au début
-    - On garde jusqu'à la fin
-    - L'equity curve suit le prix normalisé (base initial_capital)
-
-    Retourne un DataFrame avec :
-        timestamp, equity_curve, returns
+    Buy & Hold Strategy in USD with fees:
     """
+    prices = df["close"].astype(float).squeeze()
 
-    prices = df["close"].astype(float)
 
-    equity_curve = initial_capital * (prices / prices.iloc[0])
+    # Timestamp 
+    timestamps = pd.to_datetime(df["timestamp"])
 
+    #  Buy fees at the beginning
+    capital_after_fee = initial_capital * (1 - buy_fee)
+
+    # Number of BTC purchased
+    first_price = prices.iloc[0]
+    btc_qty = capital_after_fee / first_price
+
+    # Daily costs calculation
+    days = (timestamps - timestamps.iloc[0]).dt.days
+    holding_decay = (1 - daily_fee) ** days
+
+    # Portfolio value over time
+    equity_curve = btc_qty * prices * holding_decay
+
+    # Dataframe output
     out = pd.DataFrame()
-    out["timestamp"] = pd.to_datetime(df["timestamp"])
-    out["equity_curve"] = equity_curve
+    out["timestamp"] = timestamps
+    out["equity_curve"] = equity_curve 
     out["returns"] = out["equity_curve"].pct_change().fillna(0.0)
 
     return out
+
 
 
 def compute_momentum_sma_strategy(
     df: pd.DataFrame,
     fast_window: int = 10,
     slow_window: int = 50,
-    initial_capital: float = 1.0
+    initial_capital: float = 100000.0
 ) -> pd.DataFrame:
     """
-    Stratégie Momentum basée sur deux moyennes mobiles (SMA crossover) :
-
-    - SMA rapide (fast_window)
-    - SMA lente (slow_window)
-    - Si SMA rapide > SMA lente -> position = 1 (long)
-      Sinon -> position = 0 (cash)
-
-    Les rendements de la stratégie sont :
-        position(t-1) * retour_pct_du_prix(t)
-
-    Retourne un DataFrame avec :
-        timestamp, equity_curve, position, returns
+    Momentum SMA in USD :
+    - We invest `initial_capital`
+    - When SMA_fast > SMA_slow : full BTC
+    - Otherwise : full cash
+    - Tracking the portfolio in dollars
     """
 
-    prices = df["close"].astype(float)
+    prices = df["close"].astype(float).squeeze()
+    timestamps = pd.to_datetime(df["timestamp"])
 
-    sma_fast = prices.rolling(window=fast_window, min_periods=fast_window).mean()
-    sma_slow = prices.rolling(window=slow_window, min_periods=slow_window).mean()
+    # SMA
+    sma_fast = prices.rolling(fast_window, min_periods=fast_window).mean()
+    sma_slow = prices.rolling(slow_window, min_periods=slow_window).mean()
 
-    # Position long uniquement quand la rapide est au-dessus de la lente
+    # Position : 1 = long BTC, 0 = cash
     position = (sma_fast > sma_slow).astype(float)
 
-    # Rendements du prix
+    # Returns
     price_returns = prices.pct_change().fillna(0.0)
 
-    # On applique la position avec un décalage d'un pas (on réagit au signal du jour d'avant)
+    # Strategy returns
     strategy_returns = position.shift(1).fillna(0.0) * price_returns
 
+    # Equity en USD
     equity_curve = initial_capital * (1 + strategy_returns).cumprod()
 
-    out = pd.DataFrame()
-    out["timestamp"] = pd.to_datetime(df["timestamp"])
-    out["position"] = position
-    out["returns"] = strategy_returns
-    out["equity_curve"] = equity_curve
+    out = pd.DataFrame({
+        "timestamp": timestamps,
+        "position": position,
+        "returns": strategy_returns,
+        "equity_curve": equity_curve,
+    })
 
     return out

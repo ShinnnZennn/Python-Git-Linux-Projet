@@ -9,8 +9,8 @@ def get_btc_data(
     interval: str = "1h"
 ) -> pd.DataFrame:
     """
-    Récupère les données BTC-USD depuis Yahoo Finance et renvoie
-    un DataFrame propre contenant :
+    Gathering BTC-USD data from Yahoo Finance and returning
+    a clean DataFrame containing:
     timestamp, open, high, low, close, volume
     """
 
@@ -23,11 +23,11 @@ def get_btc_data(
     )
 
     if df.empty:
-        raise RuntimeError("Aucune donnée récupérée depuis Yahoo Finance.")
+        raise RuntimeError("No available data from Yahoo Finance.")
 
     df = df.reset_index()
 
-    # Selon le cas, Yahoo renvoie 'Date' ou 'Datetime'
+    # 'Date' or 'Datetime'
     if "Datetime" in df.columns:
         time_col = "Datetime"
     else:
@@ -50,17 +50,3 @@ def get_btc_data(
     df = df.dropna().sort_values("timestamp").reset_index(drop=True)
 
     return df
-
-
-if __name__ == "__main__":
-    print("Téléchargement des données BTC-USD...")
-    df = get_btc_data(period="30d", interval="1h")
-
-    print("\n--- 10 premières lignes ---")
-    print(df.head(10))
-
-    print("\n--- 10 dernières lignes ---")
-    print(df.tail(10))
-
-    print("\n--- Prix de clôture récents ---")
-    print(df[['timestamp', 'close']].tail(10))
