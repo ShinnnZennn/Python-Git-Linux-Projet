@@ -1,89 +1,78 @@
-
 import yfinance as yf
 import pandas as pd
 
 
 def get_multi_asset_data(
-    tickers: list,   # mettre une liste d'actifs
+    tickers: list,
     period: str = "30d",
     interval: str = "1h"
 ) -> pd.DataFrame:
     """
-    Récupère les données Yahoo Finance pour plusieurs tickers.
-    
-    Retourne un DataFrame avec un MultiIndex colonnes :
-        (ticker, open/close/high/low/volume)
-    et l'index = timestamp commun.
+    Download historical price data from Yahoo Finance for multiple assets.
 
-    Exemple colonnes :
-        AAPL   open
-        AAPL   close
-        TSLA   open
-        TSLA   close
-        ...
+    tickers : list
+        At least two tickers are required.
+    period : str
+    interval : str
 
-    Les données sont automatiquement alignées sur les timestamps communs.
+    Returns :
+    pd.DataFrame
     """
 
     if not tickers or len(tickers) < 2:
-        raise ValueError("Veuillez fournir au moins 2 tickers.")
+        raise ValueError("Please provide at least two tickers.")
 
-    # Téléchargement en une fois (beaucoup plus rapide)
+    # Download data in a single request
     df = yf.download(
-        tickers,
+        tickers=tickers,
         period=period,
         interval=interval,
         auto_adjust=False,
         progress=False,
-        group_by="ticker"  # important pour séparer chaque ticker
+        group_by="ticker"
     )
 
     if df.empty:
-        raise RuntimeError("Aucune donnée récupérée depuis Yahoo Finance.")
+        raise RuntimeError("No data returned from Yahoo Finance.")
 
-    # Quand un seul ticker : la structure n'est pas multi-index → on harmonise
-    if len(tickers) == 1:
-        df = {tickers[0]: df}
-    else:
-        # df est un MultiIndex (ticker, field)
-        pass
-
-    # --- Harmonisation : convertir en un DataFrame propre ---
+    # Normalize the data structure
     final_frames = []
 
     for ticker in tickers:
         try:
-            sub_df = df[ticker].copy() # il y a qu'un seul ticker dans sub_df
+            sub_df = df[ticker].copy()
         except Exception:
-            # yfinance peut retourner un ticker manquant → on remplit NaN
+            # Missing ticker data
             sub_df = pd.DataFrame()
 
         if sub_df.empty:
-            print(f"[WARNING] Aucun data reçu pour {ticker}, colonnes remplies en NaN.")
-            # on crée un DataFrame vide mais avec bon index si déjà existant
+            print(f"[WARNING] No data received for {ticker}.")
             continue
 
+        # Standardize column names
         sub_df = sub_df.rename(columns={
             "Open": "open",
             "High": "high",
             "Low": "low",
             "Close": "close",
-            "Volume": "volume"
+            "Volume": "volume",
         })
 
-        # On ajoute un niveau de colonne avec le ticker
-        sub_df.columns = pd.MultiIndex.from_product([[ticker], sub_df.columns])  # c pour éviter d'avoir Open Open Open. La on aura Apple Open, BTC Open etc
+        # Add a column level with the ticker name
+        sub_df.columns = pd.MultiIndex.from_product(
+            [[ticker], sub_df.columns]
+        )
 
         final_frames.append(sub_df)
 
-    # Fusion par timestamp
-    full_df = pd.concat(final_frames, axis=1) #on met tout ensemble
+    # Merge all assets on the timestamp index
+    full_df = pd.concat(final_frames, axis=1)
 
-    # Nettoyage
-    full_df = full_df.dropna(how="all")   # supprime lignes totalement vides
-    full_df = full_df.sort_index()  #  On s’assure que les timestamps sont dans l’ordre croissant
+    # Clean and sort
+    full_df = full_df.dropna(how="all")
+    full_df = full_df.sort_index()
 
-    # Reset index → timestamp en colonne comme ton get_data_yahoo
+    # Reset index to have timestamp as a column
     full_df = full_df.reset_index()
     full_df = full_df.rename(columns={"Datetime": "timestamp", "Date": "timestamp"})
     full_df["timestamp"] = pd.to_datetime(full_df["timestamp"])
@@ -91,16 +80,9 @@ def get_multi_asset_data(
     return full_df
 
 
-
-
 if __name__ == "__main__":
     TICKERS = ["AAPL", "MSFT", "TSLA"]
 
-    print("Téléchargement multi-actifs...")
+    print("Downloading multi-asset data...")
     df = get_multi_asset_data(TICKERS, period="30d", interval="1h")
     print(df.head())
-
-    print("\nCalcul des rendements...")
-    r = compute_multi_returns(df)
-    print(r.head())
-
