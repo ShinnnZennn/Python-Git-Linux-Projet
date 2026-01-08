@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 from single_asset.get_data_yahoo import get_btc_data
 from single_asset.strategies import (
@@ -14,10 +15,13 @@ from single_asset.metrics import (
     compute_max_drawdown
 )
 
+from single_asset.predictive_models import ridge_regression_forecast
 
 
 def run_quant_a():
-    # --- Configuration de la page ---
+    # ============================================================
+    # CONFIG
+    # ============================================================
     st.set_page_config(
         page_title="Quant A - BTC Single Asset",
         layout="wide"
@@ -26,7 +30,9 @@ def run_quant_a():
     st.title("Quant A — Single Asset : Bitcoin (BTC-USD)")
 
 
-    # --- Sidebar ---
+    # ============================================================
+    # SIDEBAR PARAMETERS
+    # ============================================================
     st.sidebar.header("Parameters")
 
     period = st.sidebar.selectbox(
@@ -47,11 +53,8 @@ def run_quant_a():
         index=1
     )
 
-    st.sidebar.markdown(
-        "**Ticker :** BTC-USD  \n**Source :** Yahoo Finance"
-    )
 
-    # Paramètres de la strategy momentum
+    # Parameters for strategies
     if strategy_name == "Momentum (SMA)":
         st.sidebar.subheader("Parameters Momentum")
         fast_window = st.sidebar.slider(
@@ -81,7 +84,33 @@ def run_quant_a():
         step=5_000
     )
 
-    # --- Data Gathering ---
+    # ============================================================
+    # FORECAST
+    # ============================================================
+
+    st.sidebar.subheader("Forecast")
+
+    enable_forecast = st.sidebar.checkbox(
+        "Enable price forecast",
+        value=False
+    )
+
+    forecast_horizon = st.sidebar.slider(
+        "Forecast horizon (periods)",
+        min_value=30,
+        max_value=300,
+        value=100,
+        step=10
+    )
+
+    st.sidebar.markdown(
+        "**Ticker :** BTC-USD<br>**Source :** Yahoo Finance",
+        unsafe_allow_html=True
+    )
+
+    # ============================================================
+    # DATA GATHERING
+    # ============================================================
     @st.cache_data(show_spinner=True)
     def load_data(period: str, interval: str):
         df = get_btc_data(period=period, interval=interval)
@@ -101,7 +130,9 @@ def run_quant_a():
         st.stop()
 
 
-    # --- Computations ---
+    # ============================================================
+    # COMMPUTE
+    # ============================================================
     last_close = float(df["close"].iloc[-1])
     last_ts = df["timestamp"].iloc[-1]
 
@@ -132,7 +163,9 @@ def run_quant_a():
     col3.write(f"**Last update :** {last_ts}")
 
 
-    # --- Principal Plot ---
+    # ============================================================
+    # PRINCIPAL PLOT
+    # ============================================================
     st.subheader("Bitcoin price and strategy")
 
     df_plot = df.copy()
@@ -159,27 +192,64 @@ def run_quant_a():
         strat_df = strat_df.set_index("timestamp")
         chart_df["Momentum SMA"] = strat_df["equity_curve"]
 
-    st.line_chart(chart_df)
+    # ============================================================
+    # FORECAST
+    # ============================================================
 
-    # METRICS QUANT A
+    if enable_forecast:
+        forecast_df = ridge_regression_forecast(
+            df,
+            horizon=forecast_horizon
+        ).set_index("timestamp")
+
+
+        # 1️⃣ Extend index FIRST
+        full_index = chart_df.index.union(forecast_df.index)
+        chart_df = chart_df.reindex(full_index)
+
+        # 2️⃣ Create forecast columns
+        chart_df["Forecast"] = np.nan
+        chart_df["Lower CI"] = np.nan
+        chart_df["Upper CI"] = np.nan
+
+        # 3️⃣ Assign forecast values (NOW SAFE)
+        chart_df.loc[forecast_df.index, "Forecast"] = forecast_df["prediction"]
+        chart_df.loc[forecast_df.index, "Lower CI"] = forecast_df["lower_ci"]
+        chart_df.loc[forecast_df.index, "Upper CI"] = forecast_df["upper_ci"]
+
+
+
+
+    # ============================================================
+    # PLOT
+    # ============================================================
+
+    if enable_forecast:
+        st.line_chart(
+            chart_df[["Price (USD)", "Forecast", "Lower CI", "Upper CI"]]
+        )
+    else:
+        st.line_chart(
+            chart_df[["Price (USD)"]]
+        )
+
+
+    # ============================================================
+    # METRICS
+    # ============================================================
     if strategy_name == "None (Price)":
         equity = chart_df["Price (USD)"]
     else:
         equity = strat_df["equity_curve"]
 
 
-    # Détermine le nombre de périodes par an selon l'interval
-    # Détermine le nombre de périodes par an selon l'interval
     if interval == "1h":
-        periods_per_year = 24 * 365          # 8760
+        periods_per_year = 24 * 365 # 8760
     elif interval == "4h":
-        periods_per_year = 6 * 365           # 2190
+        periods_per_year = 6 * 365 # 2190
     else:  # "1d"
         periods_per_year = 365
 
-
-
-    # --- Détermination si on peut annualiser ---
     long_enough_periods = ["1mo", "2mo", "3mo", "6mo", "1y"]
 
     if period in long_enough_periods:
