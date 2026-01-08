@@ -9,17 +9,6 @@ import numpy as np
 def extract_close_prices(prices_df: pd.DataFrame) -> pd.DataFrame:
     """
     Extract close prices for each asset from a multi-asset price DataFrame.
-
-    Input:
-        prices_df:
-            - column "timestamp"
-            - other columns are a MultiIndex: (ticker, field)
-              where field ∈ {open, high, low, close, volume}
-
-    Output:
-        close_df:
-            - index: timestamp
-            - columns: one column per ticker (AAPL, MSFT, BTC-USD, ...)
     """
     df = prices_df.copy()
     df = df.set_index("timestamp")
@@ -75,26 +64,8 @@ def compute_portfolio_equity(
 ) -> pd.DataFrame:
     """
     Simulate a multi-asset portfolio over time.
-
-    Parameters:
-        returns_df:
-            - column "timestamp"
-            - other columns: asset returns
-        weights:
-            - list or array of portfolio weights (must match asset columns)
-        initial_capital:
-            - starting portfolio value (e.g. 1.0 or 100000)
-        rebalancing:
-            - "none"    : Buy & Hold
-            - "weekly"  : weekly rebalancing
-            - "monthly" : monthly rebalancing
-
-    Output:
-        DataFrame with:
-            - timestamp
-            - portfolio_value
-            - portfolio_returns
     """
+
     if "timestamp" not in returns_df.columns:
         raise ValueError("returns_df must contain a 'timestamp' column.")
 
@@ -192,17 +163,8 @@ def compute_portfolio_stats(
 ) -> dict:
     """
     Compute annualized statistics for a multi-asset portfolio.
-
-    Returns:
-        dict with:
-            - asset_mean_returns
-            - asset_volatility
-            - covariance_matrix
-            - correlation_matrix
-            - portfolio_mean_return
-            - portfolio_volatility
-            - portfolio_sharpe_ratio
     """
+    
     if "timestamp" not in returns_df.columns:
         raise ValueError("returns_df must contain a 'timestamp' column.")
 

@@ -127,7 +127,7 @@ def run_portfolio_app():
     )
 
     # ============================================================
-    # ASSET VALUE CURVES (USD, based on initial allocation)
+    # ASSET VALUE CURVES
     # ============================================================
 
     returns_only = returns_df.set_index("timestamp")
@@ -153,7 +153,7 @@ def run_portfolio_app():
     asset_value_df["Portfolio"] = portfolio_series
 
     # ============================================================
-    # MAIN VISUAL COMPARISON — ASSETS VS PORTFOLIO (USD)
+    # MAIN VISUAL COMPARISON
     # ============================================================
 
     st.subheader("Asset Allocations vs Portfolio Value (USD)")
@@ -190,7 +190,7 @@ def run_portfolio_app():
     )
 
     # ============================================================
-    # ASSET-LEVEL METRICS
+    # ASSET LEVEL METRICS
     # ============================================================
     st.subheader("Asset-Level Statistics")
 
