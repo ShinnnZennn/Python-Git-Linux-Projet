@@ -1,14 +1,36 @@
-# Virtual env
+# =========================
+# Virtual environment
+# =========================
 venv/
+.env/
 
-# Python cache
+# =========================
+# Python cache & artifacts
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.log
 
-# Streamlit cache
+# =========================
+# Streamlit
+# =========================
 .streamlit/
 
-# VS Code settings
+# =========================
+# VS Code
+# =========================
 .vscode/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Reports / outputs (optional)
+# =========================
+reports/
+

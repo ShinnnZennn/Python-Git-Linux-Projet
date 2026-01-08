@@ -3,9 +3,9 @@ import pandas as pd
 
 def compute_buy_and_hold_curve(
     df: pd.DataFrame,
-    initial_capital: float = 100000.0,   # capital USD
-    buy_fee: float = 0.001,            # 0.1% fees
-    daily_fee: float = 0.0001          # 0.01% fees per day
+    initial_capital: float = 100000.0, # capital USD
+    buy_fee: float = 0.001, # 0.1% fees
+    daily_fee: float = 0.0001 # 0.01% fees per day
 ) -> pd.DataFrame:
     """
     Buy & Hold Strategy in USD with fees:
