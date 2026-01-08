@@ -224,14 +224,19 @@ def run_quant_a():
     # PLOT
     # ============================================================
 
+    plot_cols = ["Price (USD)"]
+    # Always show strategy
+    if strategy_name == "Buy & Hold":
+        plot_cols.append("Buy & Hold (equity)")
+    elif strategy_name == "Momentum (SMA)":
+        plot_cols.append("Momentum SMA")
+
+    # Add forecast if enabled
     if enable_forecast:
-        st.line_chart(
-            chart_df[["Price (USD)", "Forecast", "Lower CI", "Upper CI"]]
-        )
-    else:
-        st.line_chart(
-            chart_df[["Price (USD)"]]
-        )
+        plot_cols += ["Forecast", "Lower CI", "Upper CI"]
+
+    st.line_chart(chart_df[plot_cols])
+
 
 
     # ============================================================
