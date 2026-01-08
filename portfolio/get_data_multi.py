@@ -9,14 +9,6 @@ def get_multi_asset_data(
 ) -> pd.DataFrame:
     """
     Download historical price data from Yahoo Finance for multiple assets.
-
-    tickers : list
-        At least two tickers are required.
-    period : str
-    interval : str
-
-    Returns :
-    pd.DataFrame
     """
 
     if not tickers or len(tickers) < 2:
